@@ -43,5 +43,17 @@ RUN echo "[local]\nlocalhost ansible_connection=local" > /etc/ansible/hosts
 RUN rm -f /lib/systemd/system/systemd*udev* \
   && rm -f /lib/systemd/system/getty.target
 
+# Add non-privileged user according to Molecule docs
+# https://molecule.readthedocs.io/en/latest/examples.html#docker-with-non-privileged-user
+ENV ANSIBLE_USER=ansible DEPLOY_GROUP=deployer
+ENV SUDO_GROUP=sudo
+RUN set -xe \
+  && groupadd -r ${ANSIBLE_USER} \
+  && groupadd -r ${DEPLOY_GROUP} \
+  && useradd -m -g ${ANSIBLE_USER} ${ANSIBLE_USER} \
+  && usermod -aG ${SUDO_GROUP} ${ANSIBLE_USER} \
+  && usermod -aG ${DEPLOY_GROUP} ${ANSIBLE_USER} \
+  && sed -i "/^%${SUDO_GROUP}/s/ALL\$/NOPASSWD:ALL/g" /etc/sudoers
+
 VOLUME ["/sys/fs/cgroup", "/tmp", "/run"]
 CMD ["/lib/systemd/systemd"]
